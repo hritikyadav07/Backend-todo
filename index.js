@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const {auth, JWT_SECRET} = require('./auth');
 const bcrypt = require('bcrypt');
 
-mongoose.connect('mongodb+srv://Azmo:v9EVgustnUtyMIE8@cluster0.egfji.mongodb.net/backen-todo')
+mongoose.connect('mongodb link')
     .then(() => console.log('Connected to MongoDB'))
     .catch((err) => console.error('Database connection error:', err));
 
