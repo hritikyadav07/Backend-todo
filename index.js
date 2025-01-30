@@ -3,6 +3,7 @@ const {UserModel, TodoModel} = require('./db');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const {auth, JWT_SECRET} = require('./auth');
+const bcrypt = require('bcrypt');
 
 mongoose.connect('mongodb+srv://Azmo:v9EVgustnUtyMIE8@cluster0.egfji.mongodb.net/backen-todo')
     .then(() => console.log('Connected to MongoDB'))
@@ -12,32 +13,41 @@ const app = express();
 app.use(express.json());
 
 app.post('/signup',async function(req, res){
-    
-    const name = req.body.name;
-    const email = req.body.email;
-    const password = req.body.password;
+    try{
+        const name = req.body.name;
+        const email = req.body.email;
+        const password = req.body.password;
 
-    await UserModel.create({
-        name: name,
-        email:email,
-        password: password
-    });
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-    res.json({
-        message:"User Is created Proceed to Login"
-    });
+        await UserModel.create({
+            name: name,
+            email:email,
+            password: hashedPassword
+        });
+
+        res.json({
+            message:"User Is created Proceed to Login"
+        });
+    } catch(e){
+        res.status(500).json({
+            message:"Error while signing up"
+        })
+    }
 });
 
 app.post('/login', async function(req, res){
+    
     const email = req.body.email;
     const password = req.body.password;
 
     const response = await UserModel.findOne({
         email:email,
-        password:password
     });
 
-    if(response){
+    const passwordMatch = await bcrypt.compare(password, response.password);
+
+    if(response && passwordMatch){
         const token = jwt.sign({
             userId: response._id.toString()
         },JWT_SECRET);
@@ -54,17 +64,23 @@ app.post('/login', async function(req, res){
 
 });
 
+//auth function decodes token and adds userId to req
+
 app.post('/todo', auth, async function(req, res){
+    //req.userId already in req by auth function
     const userId =req.userId;
     const title = req.body.title;
     const done = req.body.done;
     console.log(req.body);
+   
+    
     await TodoModel.create({
         userId: userId,
         title: title,
         done: done
     });
 
+    
     res.json({
         messsage: "todo created"
     })
@@ -77,7 +93,7 @@ app.get('/todos', auth, async function(req, res){
 
     const todos = await TodoModel.find({
         userId
-    })
+    }).populate('userId').exec();
 
     res.json({
         todos
